@@ -3,8 +3,10 @@ import { useAppStore } from '@/store/useAppStore';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Plus, Trash2, Users } from 'lucide-react';
-import { Team, Player } from '@/types';
+import { Team, Player, OFFENSE_POSITIONS, DEFENSE_POSITIONS } from '@/types';
 import { toast } from 'sonner';
+
+const ALL_POSITIONS = [...OFFENSE_POSITIONS, ...DEFENSE_POSITIONS];
 
 const TeamManager: React.FC = () => {
   const { teams, addTeam, deleteTeam, addPlayerToTeam, removePlayerFromTeam, setActiveTeam } = useAppStore();
@@ -12,7 +14,7 @@ const TeamManager: React.FC = () => {
   const [expandedTeamId, setExpandedTeamId] = useState<string | null>(null);
   const [newPlayerName, setNewPlayerName] = useState('');
   const [newPlayerNumber, setNewPlayerNumber] = useState('');
-  const [newPlayerPosition, setNewPlayerPosition] = useState('');
+  const [newPlayerPosition, setNewPlayerPosition] = useState<string>(ALL_POSITIONS[0]);
 
   const handleAddTeam = () => {
     if (!newTeamName.trim()) return;
@@ -34,17 +36,20 @@ const TeamManager: React.FC = () => {
       id: crypto.randomUUID(),
       name: newPlayerName.trim(),
       number: parseInt(newPlayerNumber) || 0,
-      position: newPlayerPosition.trim() || 'WR',
+      position: newPlayerPosition as Player['position'],
     };
     addPlayerToTeam(teamId, player);
     setNewPlayerName('');
     setNewPlayerNumber('');
-    setNewPlayerPosition('');
+  };
+
+  const getPositionSide = (pos: string) => {
+    if ((OFFENSE_POSITIONS as readonly string[]).includes(pos)) return 'ATK';
+    return 'DEF';
   };
 
   return (
     <div className="space-y-6">
-      {/* Add team */}
       <div className="flex gap-2">
         <Input
           placeholder="Nome do time..."
@@ -59,7 +64,6 @@ const TeamManager: React.FC = () => {
         </Button>
       </div>
 
-      {/* Teams list */}
       {teams.length === 0 ? (
         <div className="text-center py-12 text-muted-foreground">
           <Users className="w-12 h-12 mx-auto mb-3 opacity-40" />
@@ -75,10 +79,7 @@ const TeamManager: React.FC = () => {
                 onClick={() => setExpandedTeamId(expandedTeamId === team.id ? null : team.id)}
               >
                 <div className="flex items-center gap-3">
-                  <div
-                    className="w-4 h-4 rounded-full"
-                    style={{ backgroundColor: team.color }}
-                  />
+                  <div className="w-4 h-4 rounded-full" style={{ backgroundColor: team.color }} />
                   <h3 className="font-display text-xl tracking-wide">{team.name}</h3>
                   <span className="text-sm text-muted-foreground">
                     {team.roster.length} jogador{team.roster.length !== 1 ? 'es' : ''}
@@ -100,7 +101,6 @@ const TeamManager: React.FC = () => {
 
               {expandedTeamId === team.id && (
                 <div className="px-4 pb-4 border-t border-border pt-3 space-y-3">
-                  {/* Add player form */}
                   <div className="flex gap-2">
                     <Input
                       placeholder="Nome"
@@ -114,22 +114,27 @@ const TeamManager: React.FC = () => {
                       onChange={(e) => setNewPlayerNumber(e.target.value)}
                       className="bg-secondary border-border w-16"
                     />
-                    <Input
-                      placeholder="Pos"
+                    <select
                       value={newPlayerPosition}
                       onChange={(e) => setNewPlayerPosition(e.target.value)}
-                      className="bg-secondary border-border w-20"
-                    />
-                    <Button
-                      size="sm"
-                      onClick={() => handleAddPlayer(team.id)}
-                      className="shrink-0"
+                      className="bg-secondary text-foreground border border-border rounded-lg px-2 py-2 text-sm w-24"
                     >
+                      <optgroup label="Ataque">
+                        {OFFENSE_POSITIONS.map((p) => (
+                          <option key={p} value={p}>{p}</option>
+                        ))}
+                      </optgroup>
+                      <optgroup label="Defesa">
+                        {DEFENSE_POSITIONS.map((p) => (
+                          <option key={p} value={p}>{p}</option>
+                        ))}
+                      </optgroup>
+                    </select>
+                    <Button size="sm" onClick={() => handleAddPlayer(team.id)} className="shrink-0">
                       <Plus className="w-4 h-4" />
                     </Button>
                   </div>
 
-                  {/* Roster */}
                   {team.roster.length === 0 ? (
                     <p className="text-sm text-muted-foreground text-center py-2">Elenco vazio</p>
                   ) : (
@@ -143,6 +148,13 @@ const TeamManager: React.FC = () => {
                             <span className="font-display text-primary text-lg">#{player.number}</span>
                             <span className="text-sm font-medium">{player.name}</span>
                             <span className="text-xs text-muted-foreground uppercase">{player.position}</span>
+                            <span className={`text-[10px] px-1.5 py-0.5 rounded font-semibold ${
+                              getPositionSide(player.position) === 'ATK'
+                                ? 'bg-offense/20 text-offense'
+                                : 'bg-defense/20 text-defense'
+                            }`}>
+                              {getPositionSide(player.position)}
+                            </span>
                           </div>
                           <Button
                             variant="ghost"
